@@ -6,6 +6,7 @@ import com.deigmueller.uni_meter.common.shelly.Rpc;
 import com.deigmueller.uni_meter.output.OutputDevice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import org.apache.pekko.NotUsed;
 import org.apache.pekko.actor.typed.ActorRef;
 import org.apache.pekko.actor.typed.ActorSystem;
@@ -35,6 +36,24 @@ class HttpRoute extends AllDirectives {
   // Class members
   private static final InetAddress DEFAULT_ADDRESS = InetAddress.getLoopbackAddress();
 
+  public final static List<String> METHODS = List.of(
+      "Cloud.GetConfig",
+      "Cloud.SetConfig",
+      "EM.GetConfig",
+      "EM.GetStatus",
+      "EMData.GetStatus",
+      "Script.List",
+      "Script.GetCode",
+      "Shelly.GetComponents",
+      "Shelly.GetConfig",
+      "Shelly.ListMethods",
+      "Shelly.GetDeviceInfo",
+      "Shelly.GetStatus",
+      "Shelly.Reboot",
+      "Sys.GetConfig",
+      "Ws.GetConfig",
+      "Ws.SetConfig"
+  );
   private final Logger logger;
   private final ActorSystem<?> system;
   private final Materializer materializer;

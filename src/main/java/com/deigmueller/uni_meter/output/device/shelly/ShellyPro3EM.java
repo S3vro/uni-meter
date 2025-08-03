@@ -999,7 +999,7 @@ public class ShellyPro3EM extends Shelly {
 
   private ShellyMethods rpcShellyMethods(@NotNull InetAddress remoteAddress) {
     logger.trace("Shelly.rpcShellyGetConfig()");
-    return new ShellyMethods(List.of("kamel", "lama")); //TODO: Change;
+    return new ShellyMethods(HttpRoute.METHODS);
   }
 
   private Rpc.Response rpcShellyGetStatus(@NotNull InetAddress remoteAddress) {
@@ -1022,9 +1022,7 @@ public class ShellyPro3EM extends Shelly {
   private Rpc.ListMethodsResponse rpcShellyListMethods(@NotNull InetAddress remoteAddress) {
     logger.trace("Shelly.rpcListMethods()");
 
-    List<String> methods = List.of("kamel", "lama");
-
-    Rpc.ListMethodsResponse response = new Rpc.ListMethodsResponse(methods);
+    Rpc.ListMethodsResponse response = new Rpc.ListMethodsResponse(HttpRoute.METHODS);
 
     return response;
   }
