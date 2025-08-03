@@ -128,6 +128,7 @@ public class ShellyPro3EM extends Shelly {
           .onMessage(ScriptGetCode.class, this::onScriptGetCode)
           .onMessage(ShellyGetComponents.class, this::onShellyGetComponents)
           .onMessage(ShellyGetConfig.class, this::onShellyGetConfig)
+          .onMessage(ShellyListMethods.class, this::onShellyListMethods)
           .onMessage(ShellyGetDeviceInfo.class, this::onShellyGetDeviceInfo)
           .onMessage(ShellyGetStatus.class, this::onShellyGetStatus)
           .onMessage(ShellyReboot.class, this::onShellyReboot)
@@ -323,6 +324,15 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onShellyGetConfig()");
 
     request.replyTo().tell(rpcShellyGetConfig(request.remoteAddress()));
+
+    return Behaviors.same();
+  }
+
+
+  protected @NotNull Behavior<Command> onShellyListMethods(@NotNull ShellyListMethods request) {
+    logger.trace("ShellyPro3EM.onShellyListMethods()");
+
+    request.replyTo().tell(rpcShellyMethods(request.remoteAddress()));
 
     return Behaviors.same();
   }
@@ -985,6 +995,11 @@ public class ShellyPro3EM extends Shelly {
   private ShellyConfig rpcShellyGetConfig(@NotNull InetAddress remoteAddress) {
     logger.trace("Shelly.rpcShellyGetConfig()");
     return createConfig(remoteAddress);
+  }
+
+  private ShellyMethods rpcShellyMethods(@NotNull InetAddress remoteAddress) {
+    logger.trace("Shelly.rpcShellyGetConfig()");
+    return new ShellyMethods(List.of("kamel", "lama")); //TODO: Change;
   }
 
   private Rpc.Response rpcShellyGetStatus(@NotNull InetAddress remoteAddress) {
