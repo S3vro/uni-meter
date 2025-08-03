@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 class HttpRoute extends AllDirectives {
   // Class members
   private static final InetAddress DEFAULT_ADDRESS = InetAddress.getLoopbackAddress();
-  
+
   private final Logger logger;
   private final ActorSystem<?> system;
   private final Materializer materializer;
@@ -43,9 +43,9 @@ class HttpRoute extends AllDirectives {
   private final Duration timeout = Duration.ofSeconds(5);
   private final FiniteDuration finiteTimeout = FiniteDuration.apply(5, TimeUnit.SECONDS);
   private final ObjectMapper objectMapper = Rpc.createObjectMapper();
-  
-  public HttpRoute(Logger logger, 
-                   ActorSystem<?> system, 
+
+  public HttpRoute(Logger logger,
+                   ActorSystem<?> system,
                    Materializer materializer,
                    ActorRef<OutputDevice.Command> shelly,
                    ActorRef<WebsocketInput.Notification> websocketInput) {
@@ -57,16 +57,16 @@ class HttpRoute extends AllDirectives {
   }
 
   public Route createRoute() {
-    return extractClientIP(remoteAddress -> 
+    return extractClientIP(remoteAddress ->
           concat(
                 path("reset_data", this::onResetData),
-                path("shelly", () -> 
+                path("shelly", () ->
                       get(() -> onShellyGet(remoteAddress))
-                ), 
-                path("settings", () -> 
+                ),
+                path("settings", () ->
                       get(() -> onSettingsGet(remoteAddress))
-                ), 
-                path("status", () -> 
+                ),
+                path("status", () ->
                       get(() -> onStatusGet(remoteAddress))
                 ),
                 path("rpc", () ->
@@ -88,15 +88,15 @@ class HttpRoute extends AllDirectives {
                                         parameter(StringUnmarshallers.STRING, "config", this::onCloudSetConfig)
                                   ),
                                   path("EM.GetConfig", () ->
-                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id -> 
+                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id ->
                                               onEmGetConfig(id.orElse(0)))
                                   ),
                                   path("EM.GetStatus", () ->
-                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id -> 
+                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id ->
                                               onEmGetStatus(remoteAddress, id.orElse(0)))
                                   ),
                                   path("EMData.GetStatus", () ->
-                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id -> 
+                                        parameterOptional(StringUnmarshallers.INTEGER, "id", id ->
                                               onEmDataGetStatus(remoteAddress, id.orElse(0)))
                                   ),
                                   path("Script.List", () ->
@@ -111,21 +111,24 @@ class HttpRoute extends AllDirectives {
                                   path("Shelly.GetConfig", () ->
                                         onShellyGetConfig(remoteAddress)
                                   ),
+                                  path("Shelly.ListMethods", () ->
+                                  onShellyListMethods(remoteAddress)
+                                  ),
                                   path("Shelly.GetDeviceInfo", () ->
-                                        onShellyGetDeviceInfo(remoteAddress)      
+                                        onShellyGetDeviceInfo(remoteAddress)
                                   ),
                                   path("Shelly.GetStatus" , () ->
                                         onShellyGetStatus(remoteAddress)
                                   ),
                                   path("Shelly.Reboot", () ->
-                                        parameterOptional(StringUnmarshallers.INTEGER, "delay_ms", delay_ms -> 
+                                        parameterOptional(StringUnmarshallers.INTEGER, "delay_ms", delay_ms ->
                                               onShellyReboot(remoteAddress, delay_ms.orElse(1000)))
                                   ),
                                   path("Sys.GetConfig" , () ->
                                         onSysGetConfig(remoteAddress)
                                   ),
                                   path("Ws.GetConfig", this::onWsGetConfig),
-                                  path("Ws.SetConfig", () -> 
+                                  path("Ws.SetConfig", () ->
                                         parameter(StringUnmarshallers.STRING, "config", this::onWsSetConfig)
                                   ),
                                   extractUnmatchedPath(unmatchedPath -> {
@@ -144,10 +147,10 @@ class HttpRoute extends AllDirectives {
                             createWebsocketFlow(remoteAddress, upgrade)
                       )
                 )),
-                extractUnmatchedPath(unmatchedPath -> 
+                extractUnmatchedPath(unmatchedPath ->
                   extractMethod(method -> {
                     logger.debug("unhandled HTTP method {} path: {}", method.name(), unmatchedPath.substring(1));
-                    return complete(StatusCodes.NOT_FOUND);                     
+                    return complete(StatusCodes.NOT_FOUND);
                   })
                 )
           )
@@ -171,10 +174,10 @@ class HttpRoute extends AllDirectives {
           AskPattern.ask(
                 shelly,
                 (ActorRef<Rpc.GetDeviceInfoResponse> replyTo) -> new Shelly.ShellyGet(
-                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
+                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
                       replyTo),
-                timeout, 
-                system.scheduler()), 
+                timeout,
+                system.scheduler()),
           Jackson.marshaller(objectMapper));
   }
 
@@ -183,10 +186,10 @@ class HttpRoute extends AllDirectives {
           AskPattern.ask(
                 shelly,
                 (ActorRef<Shelly.Settings> replyTo) -> new Shelly.SettingsGet(
-                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
-                      replyTo), 
-                timeout, 
-                system.scheduler()), 
+                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                      replyTo),
+                timeout,
+                system.scheduler()),
           Jackson.marshaller(objectMapper));
   }
 
@@ -195,10 +198,10 @@ class HttpRoute extends AllDirectives {
           AskPattern.ask(
                 shelly,
                 (ActorRef<Shelly.Status> replyTo) -> new Shelly.StatusGet(
-                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
+                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
                       replyTo),
-                timeout, 
-                system.scheduler()), 
+                timeout,
+                system.scheduler()),
           Jackson.marshaller(objectMapper));
   }
 
@@ -206,14 +209,14 @@ class HttpRoute extends AllDirectives {
                              @NotNull Rpc.Request request) {
     return completeOKWithFuture(
           AskPattern.ask(
-                shelly, 
-                (ActorRef<Rpc.ResponseFrame> replyTo) -> 
+                shelly,
+                (ActorRef<Rpc.ResponseFrame> replyTo) ->
                       new Shelly.HttpRpcRequest(
-                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
-                            request, 
-                            replyTo), 
-                timeout, 
-                system.scheduler()), 
+                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                            request,
+                            replyTo),
+                timeout,
+                system.scheduler()),
           Jackson.marshaller(objectMapper));
   }
 
@@ -269,6 +272,20 @@ class HttpRoute extends AllDirectives {
           Jackson.marshaller(objectMapper));
   }
 
+  private Route onShellyListMethods(@NotNull RemoteAddress remoteAddress) {
+      return completeOKWithFuture(
+          AskPattern.ask(
+              shelly,
+
+              (ActorRef<ShellyPro3EM.ShellyMethods> replyTo) -> new ShellyPro3EM.ShellyListMethods(
+                  remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                  replyTo),
+              timeout,
+              system.scheduler()
+          ),
+          Jackson.marshaller(objectMapper));
+  }
+
   private Route onShellyGetDeviceInfo(@NotNull RemoteAddress remoteAddress) {
     return completeOKWithFuture(
           AskPattern.ask(
@@ -315,9 +332,9 @@ class HttpRoute extends AllDirectives {
           AskPattern.ask(
                 shelly,
                 (ActorRef<Rpc.SysGetConfigResponse> replyTo) -> new ShellyPro3EM.SysGetConfig(
-                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
-                      replyTo), 
-                timeout, 
+                      remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                      replyTo),
+                timeout,
                 system.scheduler()
           ),
           Jackson.marshaller(objectMapper));
@@ -333,6 +350,8 @@ class HttpRoute extends AllDirectives {
           ),
           Jackson.marshaller(objectMapper));
   }
+
+
 
   private Route onCloudSetConfig(@NotNull String config) {
     Rpc.CloudSetConfigParams setConfigParams;
@@ -373,13 +392,13 @@ class HttpRoute extends AllDirectives {
                               int id) {
     return completeOKWithFuture(
           AskPattern.ask(
-                shelly, 
-                (ActorRef<ShellyPro3EM.EmGetStatusOrFailureResponse> replyTo) -> 
+                shelly,
+                (ActorRef<ShellyPro3EM.EmGetStatusOrFailureResponse> replyTo) ->
                       new ShellyPro3EM.EmGetStatus(
-                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
-                            id, 
-                            replyTo), 
-                timeout, 
+                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                            id,
+                            replyTo),
+                timeout,
                 system.scheduler()
           ).thenApply(response -> {
             if (response.failure() != null) {
@@ -389,7 +408,7 @@ class HttpRoute extends AllDirectives {
                 throw new RuntimeException(response.failure());
               }
             }
-            
+
             return response.status();
           }),
           Jackson.marshaller(objectMapper));
@@ -400,10 +419,10 @@ class HttpRoute extends AllDirectives {
     return completeOKWithFuture(
           AskPattern.ask(
                 shelly,
-                (ActorRef<ShellyPro3EM.EmDataGetStatusOrFailureResponse> replyTo) -> 
+                (ActorRef<ShellyPro3EM.EmDataGetStatusOrFailureResponse> replyTo) ->
                       new ShellyPro3EM.EmDataGetStatus(
-                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), 
-                            id, 
+                            remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
+                            id,
                             replyTo),
                 timeout,
                 system.scheduler()
@@ -420,14 +439,14 @@ class HttpRoute extends AllDirectives {
   private Route onWsGetConfig() {
     return completeOKWithFuture(
           AskPattern.ask(
-                shelly, 
+                shelly,
                 ShellyPro3EM.WsGetConfig::new,
                 timeout,
                 system.scheduler()
           ),
           Jackson.marshaller(objectMapper));
   }
-  
+
   private Route onWsSetConfig(@NotNull String config) {
     Rpc.WsSetConfigParams setConfigParams;
     try {
@@ -453,22 +472,22 @@ class HttpRoute extends AllDirectives {
   private Route createWebsocketFlow(@NotNull RemoteAddress remoteAddress,
                                     @NotNull WebSocketUpgrade upgrade) {
     final String connectionId = UUID.randomUUID().toString();
-    
+
     final Logger connectionLogger = LoggerFactory.getLogger("uni-meter.websocket." + connectionId);
 
-    Source<Message, NotUsed> source = 
+    Source<Message, NotUsed> source =
           WebsocketOutput.createSource(
                 connectionLogger,
-                materializer, 
+                materializer,
                 (sourceActor) -> shelly.tell(
                       new Shelly.WebsocketOutputOpened(connectionId, remoteAddress.getAddress().orElse(DEFAULT_ADDRESS), sourceActor)));
 
-    Sink<Message, NotUsed> sink = 
+    Sink<Message, NotUsed> sink =
           WebsocketInput.createSink(
                 connectionLogger,
                 connectionId,
                 remoteAddress.getAddress().orElse(DEFAULT_ADDRESS),
-                materializer, 
+                materializer,
                 websocketInput);
 
     return complete(upgrade.handleMessagesWith(sink, source));

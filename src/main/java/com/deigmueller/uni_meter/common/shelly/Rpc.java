@@ -1,6 +1,7 @@
 package com.deigmueller.uni_meter.common.shelly;
 
 import com.deigmueller.uni_meter.output.OutputDevice;
+import com.deigmueller.uni_meter.output.device.shelly.ShellyPro3EM;
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,7 +26,7 @@ import java.util.Locale;
 
 @SuppressWarnings("SpellCheckingInspection")
 public class Rpc {
-  private static final Logger LOGGER = LoggerFactory.getLogger("uni-meter.rpc"); 
+  private static final Logger LOGGER = LoggerFactory.getLogger("uni-meter.rpc");
   @Getter private static final ObjectMapper objectMapper = createObjectMapper();
 
   public static ObjectMapper createObjectMapper() {
@@ -47,7 +48,7 @@ public class Rpc {
       throw new RuntimeException(e);
     }
   }
-  
+
   public static Request parseRequest(byte@NotNull[] data) {
     try {
       return treeToRequest(objectMapper.readTree(data));
@@ -83,7 +84,7 @@ public class Rpc {
       throw new RuntimeException(e);
     }
   }
-  
+
   private static Request treeToRequest(@NotNull JsonNode tree) throws JsonProcessingException {
     JsonNode methodNode = tree.get("method");
     if (methodNode != null) {
@@ -98,6 +99,7 @@ public class Rpc {
         case "script.getcode" -> objectMapper.treeToValue(tree, ScriptGetCode.class);
         case "shelly.getcomponents" -> objectMapper.treeToValue(tree, ShellyGetComponents.class);
         case "shelly.getconfig" -> objectMapper.treeToValue(tree, ShellyGetConfig.class);
+        case "shelly.listmethods" -> objectMapper.treeToValue(tree, ShellyListMethods.class);
         case "shelly.getstatus" -> objectMapper.treeToValue(tree, ShellyGetStatus.class);
         case "shelly.getdeviceinfo" -> objectMapper.treeToValue(tree, GetDeviceInfo.class);
         case "shelly.reboot" -> objectMapper.treeToValue(tree, ShellyReboot.class);
@@ -119,16 +121,16 @@ public class Rpc {
   }
 
   public interface Response {}
-  
+
   public record Error(
         @JsonProperty("code") int code,
         @JsonProperty("messge") String message
   ) {}
-  
+
   public interface Status {}
-  
+
   public interface Config {}
-  
+
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonPropertyOrder({"id", "src", "dst", "result"})
@@ -158,7 +160,7 @@ public class Rpc {
       @JsonProperty("ts") Double ts,
       @JsonProperty("events") List<EventData> events
   ) {}
-  
+
   public record EventData(
       @JsonProperty("component") String component,
       @JsonProperty("id") long id,
@@ -166,7 +168,7 @@ public class Rpc {
       @JsonProperty("ts") Double ts,
       @JsonProperty("data") List<EventDataItem> data
   ) {}
-  
+
   public record EventDataItem(
         @JsonProperty("ts") Double ts,
         @JsonProperty("period") int period,
@@ -197,7 +199,7 @@ public class Rpc {
         @JsonProperty("src") String src,
         @JsonProperty("dst") String dst
   ) implements Request {}
-  
+
   public record ScriptListResponse(
         @JsonProperty("scripts") List<Script> scripts
   ) implements Response {}
@@ -235,7 +237,7 @@ public class Rpc {
   ) implements Rpc.Response {
     @Override public @NotNull String toString() { return Rpc.toString(this); }
   }
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record ShellyGetComponents(
@@ -283,13 +285,22 @@ public class Rpc {
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
+  public record ShellyListMethods(
+      @JsonProperty("id") Long id,
+      @JsonProperty("method") String method,
+      @JsonProperty("src") String src,
+      @JsonProperty("dst") String dst
+  ) implements Request {}
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonIgnoreProperties(ignoreUnknown = true)
   public record ShellyGetStatus(
         @JsonProperty("id") Long id,
         @JsonProperty("method") String method,
         @JsonProperty("src") String src,
         @JsonProperty("dst") String dst
   ) implements Request {}
-  
+
   public record ShellyGetStatusResponse(
         @JsonProperty("wifi_sta") WiFiStatus wifi_sta,
         @JsonProperty("cloud") CloudStatus cloud,
@@ -360,7 +371,7 @@ public class Rpc {
         @JsonProperty("uptime") long uptime,
         @JsonProperty("fw_version") String fw_version
   ) {}
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record ShellyReboot(
@@ -390,7 +401,7 @@ public class Rpc {
       }
     }
   }
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record GetDeviceInfo(
@@ -399,6 +410,8 @@ public class Rpc {
         @JsonProperty("src") String src,
         @JsonProperty("dst") String dst
   ) implements Request {}
+
+
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
@@ -427,12 +440,28 @@ public class Rpc {
     }
   }
 
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  public record ListMethodsResponse(
+      @JsonProperty("methods") List<String> methods
+  ) implements Response {
+    @Override
+    public @NotNull String toString() {
+      try {
+        return objectMapper.writeValueAsString(this);
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record EmGetStatus(
-        @JsonProperty("id") Long id, 
+        @JsonProperty("id") Long id,
         @JsonProperty("method") String method,
-        @JsonProperty("src") String src, 
+        @JsonProperty("src") String src,
         @JsonProperty("dst") String dst,
         @JsonProperty("params") EmGetStatusParams params
   ) implements Request {}
@@ -448,7 +477,7 @@ public class Rpc {
   @JsonPropertyOrder({"id", "a_current", "a_voltage", "a_act_power", "a_aprt_power", "a_pf", "a_freq", "a_errors",
                      "b_current", "b_voltage", "b_act_power", "b_aprt_power", "b_pf", "b_freq", "b_errors",
                      "c_current", "c_voltage", "c_act_power", "c_aprt_power", "c_pf", "c_freq", "c_errors",
-                     "n_current", "n_errors", "total_current", "total_act_power", "total_aprt_power", 
+                     "n_current", "n_errors", "total_current", "total_act_power", "total_aprt_power",
                      "user_calibrated_phase", "errors"})
   public record EmGetStatusResponse(
         @JsonProperty("id") Integer id,
@@ -499,7 +528,7 @@ public class Rpc {
   public record EmGetConfigParams(
         @JsonProperty("id") int id
   ) {}
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonPropertyOrder({"id", "name", "blink_mode_selector", "phase_selector", "monitor_phase_sequence", "reverse", "ct_type"})
@@ -530,7 +559,7 @@ public class Rpc {
     @JsonProperty("rpc") BleGetConfigResponseRpc rpc,
     @JsonProperty("observer") BleGetConfigResponseObserver observer
   ) {}
-  
+
   public record BleGetConfigResponseRpc(
         @JsonProperty("enable") Boolean enable
   ) {}
@@ -546,14 +575,14 @@ public class Rpc {
         @JsonProperty("ts") Double ts,
         @JsonProperty("em:0") EmGetStatusResponse em0
   ) implements NotificationParam {}
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonPropertyOrder({"id", "method", "src", "dst", "params"})
   public record EmDataGetStatus(
-        @JsonProperty("id") Long id, 
+        @JsonProperty("id") Long id,
         @JsonProperty("method") String method,
-        @JsonProperty("src") String src, 
+        @JsonProperty("src") String src,
         @JsonProperty("dst") String dst,
         @JsonProperty("params") EmDataGetStatusParams params) implements Request {
   }
@@ -585,7 +614,7 @@ public class Rpc {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record EmDataGetConfigResponse(
   ) implements Response, Config {}
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   @JsonPropertyOrder({"ts", "emdata:0"})
@@ -617,7 +646,7 @@ public class Rpc {
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record SysGetConfigParams(
   ) {}
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record SysGetConfigResponse(
@@ -631,7 +660,7 @@ public class Rpc {
   ) implements Response {
     @Override public @NotNull String toString() { return Rpc.toString(this); }
   }
-  
+
   public record Device(
         @JsonProperty("name") String name,
         @JsonProperty("mac") String mac,
@@ -640,38 +669,38 @@ public class Rpc {
         @JsonProperty("profile") String profile,
         @JsonProperty("discoverable") boolean discoverable
   ) {}
-  
+
   public record Location(
         @JsonProperty("tz") String tz,
         @JsonProperty("lat") float lat,
         @JsonProperty("lon") float lon
   ) {}
-  
+
   public record Debug(
         @JsonProperty("mqtt") Mqtt mqtt,
         @JsonProperty("websocket") Websocket websocket,
         @JsonProperty("udp") Udp udp
   ) {}
-  
+
   public record Mqtt(
         @JsonProperty("enable") boolean enable
   ) {}
-  
+
   public record Websocket(
         @JsonProperty("enable") boolean enable
   ) {}
-  
+
   public record Udp(
         @JsonProperty("addr") RpcNull addr
   ) {}
-  
+
   public record UiData() {}
-  
+
   public record RpcUdp(
         @JsonProperty("dst_addr") String dst_addr,
         @JsonProperty("listen_port") Integer listen_port
   ) {}
-  
+
   public record Sntp(
         @JsonProperty("server") String server
   ) {}
@@ -749,8 +778,8 @@ public class Rpc {
   ) implements Response {
     public WsGetConfigResponse(com.typesafe.config.Config config) {
       this(
-            config.getBoolean("enabled"), 
-            RpcStringOrNull.of(config.getString("server").isEmpty() ? null : config.getString("server")), 
+            config.getBoolean("enabled"),
+            RpcStringOrNull.of(config.getString("server").isEmpty() ? null : config.getString("server")),
             config.getString("ssl_ca"));
     }
     public @NotNull WsGetConfigResponse withEnable(boolean enable) {
@@ -762,7 +791,7 @@ public class Rpc {
     public @NotNull WsGetConfigResponse withSslCa(@Nullable String ssl_ca) {
       return new WsGetConfigResponse(enable, server, ssl_ca);
     }
-    
+
     @Override public @NotNull String toString() { return Rpc.toString(this); }
   }
 
@@ -793,7 +822,7 @@ public class Rpc {
   }
 
   public record RpcNull() {}
-  
+
   public record RpcStringOrNull(
         String value
   ) {

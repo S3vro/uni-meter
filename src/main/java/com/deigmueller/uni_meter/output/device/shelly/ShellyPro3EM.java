@@ -52,8 +52,8 @@ import java.util.concurrent.CompletionStage;
 @Setter(AccessLevel.PROTECTED)
 public class ShellyPro3EM extends Shelly {
   // Class members
-  public static final String TYPE = "ShellyPro3EM";  
-  
+  public static final String TYPE = "ShellyPro3EM";
+
   // Instance members
   private final ActorRef<WebsocketInput.Notification> websocketInputNotificationAdapter =
         getContext().messageAdapter(WebsocketInput.Notification.class, WrappedWebsocketInputNotification::new);
@@ -63,7 +63,7 @@ public class ShellyPro3EM extends Shelly {
   private final Map<String, WebsocketContext> websocketConnections = new HashMap<>();
   private SourceQueueWithComplete<WebsocketProcessPendingEmGetStatusRequest> websocketThrottlingQueue;
   private UniqueKillSwitch websocketKillSwitch;
-  
+
   private final Map<InetSocketAddress, UdpClientContext> udpClients = new HashMap<>();
   private SourceQueueWithComplete<UdpClientProcessPendingEmGetStatusRequest> udpThrottlingQueue;
   private UniqueKillSwitch udpKillSwitch;
@@ -74,7 +74,7 @@ public class ShellyPro3EM extends Shelly {
   private final Duration minSamplePeriod = getConfig().getDuration("min-sample-period");
 
   private ActorRef<Datagram> udpOutput = null;
-  
+
   private Rpc.CloudGetConfigResponse cloudConfig = new Rpc.CloudGetConfigResponse(true, Rpc.RpcStringOrNull.of(null));
   private Rpc.WsGetConfigResponse wsConfig = new Rpc.WsGetConfigResponse(getConfig().getConfig("ws"));
   private InetAddress outboundWebsocketAddress = null;
@@ -105,11 +105,11 @@ public class ShellyPro3EM extends Shelly {
                          @NotNull ActorRef<MDnsRegistrator.Command> mDnsRegistrator,
                          @NotNull Config config) {
     super(context, controller, mDnsRegistrator, config);
-    
+
     controller.tell(new UniMeter.RegisterHttpRoute(getBindInterface(), getBindPort(), createRoute()));
 
     registerMDns();
-    
+
     startUdpServer();
 
     startOutboundWebsocketConnection();
@@ -135,19 +135,19 @@ public class ShellyPro3EM extends Shelly {
           .onMessage(WsGetConfig.class, this::onWsGetConfig)
           .onMessage(WsSetConfig.class, this::onWsSetConfig)
           .onMessage(HttpRpcRequest.class, this::onHttpRpcRequest)
-          
+
           .onMessage(WebsocketOutputOpened.class, this::onWebsocketOutputOpened)
           .onMessage(WebsocketProcessPendingEmGetStatusRequest.class, this::onWebsocketProcessPendingEmGetStatusRequest)
           .onMessage(WrappedWebsocketInputNotification.class, this::onWrappedWebsocketInputNotification)
-          
+
           .onMessage(OutboundWebsocketConnectionOpened.class, this::onOutboundWebsocketConnectionOpened)
           .onMessage(OutboundWebsocketConnectionFailed.class, this::onOutboundWebsocketConnectionFailed)
           .onMessage(RetryOpenOutboundWebsocketConnection.class, this::onRetryOpenOutboundWebsocketConnection)
-          
+
           .onMessage(WrappedUdpServerNotification.class, this::onWrappedUdpServerNotification)
           .onMessage(RetryStartUdpServer.class, this::onRetryStartUdpServer)
           .onMessage(UdpClientProcessPendingEmGetStatusRequest.class, this::onUdpClientProcessPendingEmGetStatusRequest)
-          
+
           .onMessage(ThrottlingQueueClosed.class, this::onThrottlingQueueClosed);
   }
 
@@ -183,9 +183,9 @@ public class ShellyPro3EM extends Shelly {
   @Override
   protected @NotNull Behavior<Command> onStatusGet(@NotNull StatusGet request) {
     logger.trace("ShellyPro3EM.onStatusGet()");
-    
+
     request.replyTo().tell(createStatus(request.remoteAddress()));
-    
+
     return Behaviors.same();
   }
 
@@ -196,12 +196,12 @@ public class ShellyPro3EM extends Shelly {
    */
   protected @NotNull Behavior<Command> onEmGetStatus(@NotNull EmGetStatus request) {
     logger.trace("ShellyPro3EM.onEmGetStatus()");
-    
+
     if (request.id() == 0) {
       try {
         request.replyTo().tell(
               new EmGetStatusOrFailureResponse(
-                    null, 
+                    null,
                     rpcEmGetStatus(getPowerFactorForRemoteAddress(request.remoteAddress()))));
       } catch (Exception e) {
         request.replyTo().tell(new EmGetStatusOrFailureResponse(e, null));
@@ -211,8 +211,8 @@ public class ShellyPro3EM extends Shelly {
             new EmGetStatusOrFailureResponse(
                   new NoSuchElementException("unknown EM with id " + request.id()),
                   null));
-    } 
-    
+    }
+
     return Behaviors.same();
   }
 
@@ -277,9 +277,9 @@ public class ShellyPro3EM extends Shelly {
    */
   protected @NotNull Behavior<Command> onResetData(@NotNull ResetData request) {
     logger.trace("ShellyPro3EM.onResetData()");
-    
+
     request.replyTo.tell(Done.getInstance());
-    
+
     return Behaviors.same();
   }
 
@@ -328,33 +328,33 @@ public class ShellyPro3EM extends Shelly {
   }
 
   /**
-   * Handle the request to get device information 
+   * Handle the request to get device information
    */
   protected @NotNull Behavior<Command> onShellyGetDeviceInfo(@NotNull ShellyGetDeviceInfo request) {
     logger.trace("ShellyPro3EM.onShellyGetDeviceInfo()");
-    
+
     request.replyTo().tell(rpcGetDeviceInfo(request.remoteAddress()));
-    
+
     return Behaviors.same();
   }
 
   /**
    * Handle the Shelly.GetStatus HTTP request
    * @param request Request to get the device's status
-   * @return Same behavior               
+   * @return Same behavior
    */
   protected @NotNull Behavior<Command> onShellyGetStatus(@NotNull ShellyGetStatus request) {
     logger.trace("ShellyPro3EM.onShellyGetStatus()");
-    
+
     request.replyTo().tell(createStatus(request.remoteAddress()));
-    
+
     return Behaviors.same();
   }
 
   /**
    * Handle the Shelly.Reboot HTTP request
    * @param request Request to get the device's status
-   * @return Same behavior               
+   * @return Same behavior
    */
   protected @NotNull Behavior<Command> onShellyReboot(@NotNull ShellyReboot request) {
     logger.trace("ShellyPro3EM.onShellyReboot()");
@@ -371,9 +371,9 @@ public class ShellyPro3EM extends Shelly {
    */
   protected @NotNull Behavior<Command> onSysGetConfig(@NotNull SysGetConfig request) {
     logger.trace("ShellyPro3EM.onSysGetConfig()");
-    
+
     request.replyTo().tell(rpcSysGetConfig(request.remoteAddress()));
-    
+
     return Behaviors.same();
   }
 
@@ -404,7 +404,7 @@ public class ShellyPro3EM extends Shelly {
 
     return Behaviors.same();
   }
-  
+
   /**
    * Handle the Ws.GetConfig HTTP request
    * @param request Request to get the device's configuration
@@ -425,11 +425,11 @@ public class ShellyPro3EM extends Shelly {
    */
   protected @NotNull Behavior<Command> onWsSetConfig(@NotNull WsSetConfig request) {
     logger.trace("ShellyPro3EM.onWsSetConfig()");
-    
+
     wsSetConfig(request.config());
-    
+
     request.replyTo().tell(new Rpc.WsSetConfigResponse(true));
-    
+
     return Behaviors.same();
   }
 
@@ -458,7 +458,7 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onWebsocketOutputOpened()");
 
     logger.debug("outgoing websocket connection {} to {} created", message.connectionId(), message.remoteAddress());
-    
+
     if (websocketThrottlingQueue == null) {
       Pair<SourceQueueWithComplete<WebsocketProcessPendingEmGetStatusRequest>, UniqueKillSwitch> queueSwitchPair =
             Source.<WebsocketProcessPendingEmGetStatusRequest>queue(1, OverflowStrategy.dropHead())
@@ -543,7 +543,7 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onWebsocketInputClosed()");
 
     logger.debug("incoming websocket connection {} closed", message.connectionId());
-    
+
     handleWebsocketClosed(message.connectionId());
   }
 
@@ -555,10 +555,10 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onWebsocketInputFailed()");
 
     logger.debug("incoming websocket connection {} failed: {}", message.connectionId(), message.failure().getMessage());
-    
+
     handleWebsocketClosed(message.connectionId());
   }
-  
+
   protected void handleWebsocketClosed(@NotNull String connectionId) {
     websocketConnections.remove(connectionId);
     if (websocketConnections.isEmpty()) {
@@ -639,7 +639,7 @@ public class ShellyPro3EM extends Shelly {
 
     output.tell(new WebsocketOutput.Send(wsResponse));
   }
-  
+
   /**
    * Handle the notification of a successful outbound websocket connection
    * @param message Notification of a successful outbound websocket connection
@@ -649,14 +649,14 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onOutboundWebsocketConnectionOpened()");
 
     logger.info("outbound websocket connection opened to {}", message.url());
-    
+
     outboundWebsocketAddress = message.remoteAddress();
     outboundWebsocketConnectionId = message.connectionId();
     outboundWebsocketFailure = false;
 
     return Behaviors.same();
   }
-  
+
   /**
    * Handle the notification of a failed outbound websocket connection
    * @param message Notification of a failed outbound websocket connection
@@ -671,11 +671,11 @@ public class ShellyPro3EM extends Shelly {
     } else {
       logger.debug("outbound websocket connection to {} failed: {}", message.url(), message.failure().getMessage());
     }
-    
+
 
     outboundWebsocketAddress = null;
     outboundWebsocketConnectionId = null;
-    
+
     getContext().getSystem().scheduler().scheduleOnce(
           Duration.ofSeconds(15),
           () -> getContext().getSelf().tell(RetryOpenOutboundWebsocketConnection.INSTANCE),
@@ -683,7 +683,7 @@ public class ShellyPro3EM extends Shelly {
 
     return Behaviors.same();
   }
-  
+
   /**
    * Handle the notification to retry opening an outbound websocket connection
    * @param message Notification to retry opening an outbound websocket connection
@@ -693,18 +693,18 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.onRetryOpenOutboundWebsocketConnection()");
 
     startOutboundWebsocketConnection();
-    
+
     return Behaviors.same();
   }
-  
+
   protected Behavior<Command> onRetryStartUdpServer(RetryStartUdpServer message) {
     logger.trace("ShellyPro3EM.onRetryStartUdpServer()");
-    
+
     startUdpServer();
-    
+
     return Behaviors.same();
   }
-  
+
   /**
    * Handle a wrapped UDP server notification
    * @param message Wrapped UDP server notification
@@ -749,13 +749,13 @@ public class ShellyPro3EM extends Shelly {
   }
 
   /**
-   * Handle the event that the UDP server stream is closed 
+   * Handle the event that the UDP server stream is closed
    */
   private void handleUdpServerClosed() {
     udpOutput = null;
-    
+
     logger.info("restarting UDP server in {} seconds ...", udpRestartBackoff);
-    
+
     getContext().getSystem().scheduler().scheduleOnce(
           udpRestartBackoff,
           () -> getContext().getSelf().tell(RetryStartUdpServer.INSTANCE),
@@ -805,7 +805,7 @@ public class ShellyPro3EM extends Shelly {
         }
       }
     }
-    
+
     return Behaviors.same();
   }
 
@@ -817,7 +817,7 @@ public class ShellyPro3EM extends Shelly {
   protected void processUdpRpcRequest(@NotNull InetSocketAddress remote,
                                       @NotNull Rpc.Request request) {
     logger.trace("ShellyPro3EM.processUdpRpcRequest()");
-    
+
     if (udpOutput != null) {
       Rpc.ResponseFrame response = createRpcResponse(remote.getAddress(), request);
       udpOutput.tell(Datagram.create(ByteString.fromArrayUnsafe(Rpc.responseToBytes(response)), remote));
@@ -832,7 +832,7 @@ public class ShellyPro3EM extends Shelly {
    */
   protected Behavior<Command> onWebsocketProcessPendingEmGetStatusRequest(WebsocketProcessPendingEmGetStatusRequest message) {
     logger.trace("ShellyPro3EM.onProcessPendingEmGetStatusRequest()");
-    
+
     if (!isSwitchedOff()) {
       for (WebsocketContext websocketContext : websocketConnections.values()) {
         if (websocketContext.getLastEmGetStatusRequest() != null) {
@@ -844,7 +844,7 @@ public class ShellyPro3EM extends Shelly {
         }
       }
     }
-    
+
     return Behaviors.same();
   }
 
@@ -892,7 +892,7 @@ public class ShellyPro3EM extends Shelly {
             getMaterializer(),
             getContext().getSelf(),
             websocketInputNotificationAdapter);
-    
+
     return httpRoute.createRoute();
   }
 
@@ -900,13 +900,13 @@ public class ShellyPro3EM extends Shelly {
   protected int getNumMeters() {
     return 3;
   }
-  
+
   protected @NotNull Rpc.ResponseFrame createRpcResponse(@NotNull InetAddress remoteAddress,
                                                          @NotNull Rpc.Request request) {
     try {
       return new Rpc.ResponseFrame(
-            request.id(), 
-            getHostname(remoteAddress), 
+            request.id(),
+            getHostname(remoteAddress),
             request.src(),
             createRpcResult(remoteAddress, request),
             null);
@@ -926,7 +926,7 @@ public class ShellyPro3EM extends Shelly {
             new Rpc.Error(-32603, e.getMessage()));
     }
   }
-   
+
   protected Rpc.Response createRpcResult(@NotNull InetAddress remoteAddress,
                                          @NotNull Rpc.Request request) throws RpcException {
     return switch (request.method().toLowerCase()) {
@@ -940,6 +940,7 @@ public class ShellyPro3EM extends Shelly {
       case "shelly.getcomponents" -> rpcShellyGetComponents(remoteAddress);
       case "shelly.getconfig" -> rpcShellyGetConfig(remoteAddress);
       case "shelly.getstatus" -> rpcShellyGetStatus(remoteAddress);
+      case "shelly.listmethods" -> rpcShellyListMethods(remoteAddress);
       case "shelly.getdeviceinfo" -> rpcGetDeviceInfo(remoteAddress);
       case "shelly.reboot" -> rpcReboot(remoteAddress);
       case "sys.getconfig" -> rpcSysGetConfig(remoteAddress);
@@ -956,7 +957,7 @@ public class ShellyPro3EM extends Shelly {
    */
   private Rpc.CloudSetConfigResponse rpcCloudSetConfig(@NotNull Rpc.CloudSetConfig request) {
     logger.trace("ShellyPro3EM.rpcCloudSetConfig()");
-    
+
     logger.debug("setting cloud config {}", request);
 
     if (request.params() != null) {
@@ -988,7 +989,7 @@ public class ShellyPro3EM extends Shelly {
 
   private Rpc.Response rpcShellyGetStatus(@NotNull InetAddress remoteAddress) {
     logger.trace("Shelly.rpcShellyGetStatus()");
-    
+
     Rpc.ShellyGetStatusResponse response = new Rpc.ShellyGetStatusResponse(
           createWiFiStatus(),
           createCloudStatus(),
@@ -997,8 +998,18 @@ public class ShellyPro3EM extends Shelly {
           createTempStatus(),
           createEMeterStatus(remoteAddress)
     );
-    
+
     logger.trace("ShellyPro3EM.rpcShellyGetStatus(): {}", response);
+
+    return response;
+  }
+
+  private Rpc.ListMethodsResponse rpcShellyListMethods(@NotNull InetAddress remoteAddress) {
+    logger.trace("Shelly.rpcListMethods()");
+
+    List<String> methods = List.of("kamel", "lama");
+
+    Rpc.ListMethodsResponse response = new Rpc.ListMethodsResponse(methods);
 
     return response;
   }
@@ -1020,12 +1031,12 @@ public class ShellyPro3EM extends Shelly {
           Rpc.RpcStringOrNull.of(null),
           "triphase"
     );
-    
+
     logger.trace("ShellyPro3EM.rpcGetDeviceInfo(): {}", response);
-    
+
     return response;
   }
-  
+
   private Rpc.ShellyRebootResponse rpcReboot(@NotNull InetAddress ignore) {
     logger.trace("ShellyPro3EM.rpcReboot()");
     return new Rpc.ShellyRebootResponse();
@@ -1039,11 +1050,11 @@ public class ShellyPro3EM extends Shelly {
     logger.trace("ShellyPro3EM.rpcCloudGetConfig()");
     return cloudConfig;
   }
-  
-  
+
+
   private Rpc.EmGetConfigResponse rpcEmGetConfig() {
     logger.trace("ShellyPro3EM.rpcEmGetConfig()");
-    
+
     return new Rpc.EmGetConfigResponse(
           0,
           new Rpc.RpcStringOrNull(null),
@@ -1054,23 +1065,23 @@ public class ShellyPro3EM extends Shelly {
           "120A"
     );
   }
-  
+
 
   private Rpc.EmGetStatusResponse rpcEmGetStatus(double factor) throws RpcException {
     logger.trace("ShellyPro3EM.rpcEmGetStatus()");
-    
+
     if (isSwitchedOff()) {
       throw new TemporaryNotAvailableException("device is not available until " + getOffUntil());
     }
-    
+
     PowerData powerPhase0 = getPowerPhase0();
     PowerData powerPhase1 = getPowerPhase1();
     PowerData powerPhase2 = getPowerPhase2();
-    
+
     if (powerPhase0 == null && powerPhase1 == null && powerPhase2 == null) {
       throw new RpcException(RpcError.ERROR_NO_POWER_DATA, RpcError.ERROR_NO_POWER_DATA_MSG);
     }
-    
+
     if (powerPhase0 == null) {
       powerPhase0 = getPowerPhase0OrDefault();
     }
@@ -1080,13 +1091,13 @@ public class ShellyPro3EM extends Shelly {
     if (powerPhase2 == null) {
       powerPhase2 = getPowerPhase2OrDefault();
     }
-    
+
     double totalPower = (powerPhase0.power() + powerPhase1.power() + powerPhase2.power()) * factor;
-    
+
     if (checkUsageConstraint(totalPower)) {
       throw new RpcException(RpcError.ERROR_USAGE_CONSTRAINT, RpcError.ERROR_USAGE_CONSTRAINT_MSG);
     }
-    
+
     return new Rpc.EmGetStatusResponse(
           0,
           MathUtils.round(powerPhase0.current() * factor, 2),
@@ -1113,13 +1124,13 @@ public class ShellyPro3EM extends Shelly {
           null,
           null,
           MathUtils.round(
-                (powerPhase0.current() + powerPhase1.current() + powerPhase2.current()) * factor, 
+                (powerPhase0.current() + powerPhase1.current() + powerPhase2.current()) * factor,
                 2),
           MathUtils.round(
-                totalPower, 
+                totalPower,
                 2),
           MathUtils.round(
-                (powerPhase0.apparentPower() + powerPhase1.apparentPower() + powerPhase2.apparentPower()) * factor, 
+                (powerPhase0.apparentPower() + powerPhase1.apparentPower() + powerPhase2.apparentPower()) * factor,
                 2),
           null,
           null
@@ -1156,7 +1167,7 @@ public class ShellyPro3EM extends Shelly {
     if (checkUsageConstraint(totalPower)) {
       throw new RpcException(RpcError.ERROR_USAGE_CONSTRAINT, RpcError.ERROR_USAGE_CONSTRAINT_MSG);
     }
-    
+
     return new Rpc.EmDataGetStatusResponse(
           0,
           getEnergyPhase0().totalConsumption(),
@@ -1169,10 +1180,10 @@ public class ShellyPro3EM extends Shelly {
           MathUtils.round(getEnergyPhase0().totalProduction() + getEnergyPhase1().totalProduction() + getEnergyPhase2().totalProduction(), 2),
           null);
   }
-  
+
   private Rpc.SysGetConfigResponse rpcSysGetConfig(@NotNull InetAddress remoteAddress) {
     logger.trace("ShellyPro3EM.rpcSysGetConfig()");
-    
+
     return new Rpc.SysGetConfigResponse(
           new Rpc.Device(
                 getHostname(remoteAddress),
@@ -1217,11 +1228,11 @@ public class ShellyPro3EM extends Shelly {
    */
   private Rpc.WsSetConfigResponse rpcWsSetConfig(@NotNull Rpc.WsSetConfig request) {
     logger.trace("ShellyPro3EM.rpcWsSetConfig()");
-    
+
     if (request.params() != null) {
       wsSetConfig(request.params());
     }
-    
+
     return new Rpc.WsSetConfigResponse(true);
   }
 
@@ -1240,30 +1251,30 @@ public class ShellyPro3EM extends Shelly {
       cloudConfig = cloudConfig.withServer(config.server());
     }
   }
-  
+
   /**
    * Set the websocket configuration
    * @param config Configuration to set
    */
   protected void wsSetConfig(@NotNull Rpc.WsSetConfigParams config) {
     logger.trace("ShellyPro3EM.wsSetConfig()");
-    
+
     if (config.enable() != null) {
       wsConfig = wsConfig.withEnable(config.enable());
     }
     wsConfig = wsConfig.withServer(config.server());
     wsConfig = wsConfig.withSslCa(config.ssl_ca());
-    
+
     startOutboundWebsocketConnection();
   }
-  
+
   protected boolean outboundWebsocketConnectionIsEnabled() {
-    return wsConfig.enable() != null 
-          && wsConfig.enable() 
+    return wsConfig.enable() != null
+          && wsConfig.enable()
           && wsConfig.server().value() != null
           && !StringUtils.isAllBlank(wsConfig.server().value());
   }
-  
+
   protected boolean outboundWebsocketConnectionIsClosed() {
     return outboundWebsocketConnectionId == null;
   }
@@ -1295,7 +1306,7 @@ public class ShellyPro3EM extends Shelly {
   private ShellyConfig createConfig(@NotNull InetAddress remoteAddress) {
     return new ShellyConfig(
           new Rpc.BleGetConfigResponse(
-                false, 
+                false,
                 new Rpc.BleGetConfigResponseRpc(true),
                 new Rpc.BleGetConfigResponseObserver(false)),
           rpcCloudGetConfig(),
@@ -1312,11 +1323,11 @@ public class ShellyPro3EM extends Shelly {
    */
   private Status createStatus(@NotNull InetAddress remoteAddress) {
     double clientPowerFactor = getPowerFactorForRemoteAddress(remoteAddress);
-    
+
     PowerData powerPhase0 = getPowerPhase0OrDefault();
     PowerData powerPhase1 = getPowerPhase1OrDefault();
     PowerData powerPhase2 = getPowerPhase2OrDefault();
-    
+
     return new Status(
           createWiFiStatus(),
           createCloudStatus(),
@@ -1341,24 +1352,24 @@ public class ShellyPro3EM extends Shelly {
           (powerPhase0.power() + powerPhase1.power() + powerPhase2.power()) * clientPowerFactor,
           true);
   }
-  
+
   private List<Rpc.EMeterStatus> createEMeterStatus(@NotNull InetAddress remoteAddress) {
     double clientPowerFactor = getPowerFactorForRemoteAddress(remoteAddress);
 
     PowerData powerPhase0 = getPowerPhase0OrDefault();
     PowerData powerPhase1 = getPowerPhase1OrDefault();
     PowerData powerPhase2 = getPowerPhase2OrDefault();
-    
+
     return List.of(
           Rpc.EMeterStatus.of(powerPhase0, clientPowerFactor, getEnergyPhase0()),
           Rpc.EMeterStatus.of(powerPhase1, clientPowerFactor, getEnergyPhase1()),
           Rpc.EMeterStatus.of(powerPhase2, clientPowerFactor, getEnergyPhase2()));
   }
-  
+
   private Rpc.ModbusStatus createModbusStatus() {
     return new Rpc.ModbusStatus(false);
   }
-  
+
   private Rpc.Response rpcUnknownMethod(Rpc.Request request) {
     logger.error("ShellyPro3EM.rpcUnknownMethod()");
     throw new IllegalArgumentException("unhandled RPC method '" + request.method() + "'");
@@ -1369,16 +1380,16 @@ public class ShellyPro3EM extends Shelly {
    */
   protected void startOutboundWebsocketConnection() {
     logger.trace("ShellyPro3EM.startOutboundWebsocketConnection()");
-    
+
       if (outboundWebsocketConnectionIsEnabled() && outboundWebsocketConnectionIsClosed()) {
         String remoteUrl =  wsConfig.server().value();
         try {
           String connectionId = UUID.randomUUID().toString();
-          
+
           Logger logger = LoggerFactory.getLogger("uni-meter.output.outbound-websocket");
-      
+
           URI uri = URI.create(remoteUrl);
-      
+
           InetAddress remoteAddress;
           try {
             remoteAddress = InetAddress.getByName(uri.getHost());
@@ -1386,16 +1397,16 @@ public class ShellyPro3EM extends Shelly {
             getContext().getSelf().tell(new OutboundWebsocketConnectionFailed(remoteUrl, e));
             return;
           }
-          
+
           final InetAddress finalRemoteAddress = remoteAddress;
-      
+
           Source<Message, NotUsed> websocketSource = WebsocketOutput.createSource(
                 logger,
                 getMaterializer(),
                 (sourceActor) -> getContext().getSelf().tell(
                       new Shelly.WebsocketOutputOpened(connectionId, finalRemoteAddress, sourceActor))
           );
-      
+
           Sink<Message,NotUsed> websocketSink = WebsocketInput.createSink(
                 logger,
                 connectionId,
@@ -1403,14 +1414,14 @@ public class ShellyPro3EM extends Shelly {
                 getMaterializer(),
                 websocketInputNotificationAdapter
           );
-      
+
           final Flow<Message, Message, NotUsed> flow =
                 Flow.fromSinkAndSourceMat(websocketSink, websocketSource, Keep.left());
-      
+
           final Pair<CompletionStage<WebSocketUpgradeResponse>, NotUsed> pair =
                 Http.get(getContext().getSystem()).singleWebSocketRequest(
                       WebSocketRequest.create(remoteUrl), flow, getMaterializer());
-      
+
           pair.first().whenComplete((upgrade, failure) -> {
             if (failure != null) {
               getContext().getSelf().tell(new OutboundWebsocketConnectionFailed(remoteUrl, failure));
@@ -1436,7 +1447,7 @@ public class ShellyPro3EM extends Shelly {
    */
   protected void registerMDns() {
     logger.trace("Shelly.registerMDns()");
-    
+
     getMdnsRegistrator().tell(
           new MDnsRegistrator.RegisterService(
                 "_http",
@@ -1496,7 +1507,7 @@ public class ShellyPro3EM extends Shelly {
     if (udpClientContext != null) {
       return udpClientContext;
     }
-    
+
     if (udpThrottlingQueue == null) {
       Pair<SourceQueueWithComplete<UdpClientProcessPendingEmGetStatusRequest>, UniqueKillSwitch> queueSwitchPair =
             Source.<UdpClientProcessPendingEmGetStatusRequest>queue(1, OverflowStrategy.dropHead())
@@ -1504,7 +1515,7 @@ public class ShellyPro3EM extends Shelly {
                   .throttle(1, minSamplePeriod)
                   .to(Sink.actorRef(Adapter.toClassic(getContext().getSelf()), ThrottlingQueueClosed.INSTANCE))
                   .run(getMaterializer());
-      
+
       udpThrottlingQueue = queueSwitchPair.first();
       udpKillSwitch = queueSwitchPair.second();
     }
@@ -1525,7 +1536,7 @@ public class ShellyPro3EM extends Shelly {
     for (InetSocketAddress key : toToRemove) {
       udpClients.remove(key);
     }
-    
+
     if (udpClients.isEmpty() && udpThrottlingQueue != null) {
       udpKillSwitch.shutdown();
       udpThrottlingQueue = null;
@@ -1533,7 +1544,7 @@ public class ShellyPro3EM extends Shelly {
 
     return udpClientContext;
   }
-  
+
   public record ScriptList(
         @JsonProperty("remoteAddress") InetAddress remoteAddress,
         @JsonProperty("replyTo") ActorRef<Rpc.ScriptListResponse> replyTo
@@ -1552,6 +1563,10 @@ public class ShellyPro3EM extends Shelly {
   public record ShellyGetConfig(
         @JsonProperty("remoteAddress") InetAddress remoteAddress,
         @JsonProperty("replyTo") ActorRef<ShellyPro3EM.ShellyConfig> replyTo
+  ) implements Command {}
+  public record ShellyListMethods(
+      @JsonProperty("remoteAddress") InetAddress remoteAddress,
+      @JsonProperty("replyTo") ActorRef<ShellyPro3EM.ShellyMethods> replyTo
   ) implements Command {}
 
   public record ShellyGetDeviceInfo(
@@ -1583,13 +1598,13 @@ public class ShellyPro3EM extends Shelly {
         @JsonProperty("config") Rpc.CloudSetConfigParams config,
         @JsonProperty("replyTo") ActorRef<Rpc.CloudSetConfigResponse> replyTo
   ) implements Command {}
-  
+
   public record EmGetStatus(
         @JsonProperty("remoteAddress") InetAddress remoteAddress,
         @JsonProperty("id") int id,
         @JsonProperty("replyTo") ActorRef<EmGetStatusOrFailureResponse> replyTo
   ) implements Command {}
-  
+
   public record EmGetStatusOrFailureResponse(
         @JsonProperty("failure") Exception failure,
         @JsonProperty("status") Rpc.EmGetStatusResponse status
@@ -1610,7 +1625,7 @@ public class ShellyPro3EM extends Shelly {
         @JsonProperty("id") int id,
         @JsonProperty("replyTo") ActorRef<EmDataGetStatusOrFailureResponse> replyTo
   ) implements Command {}
-  
+
   public record EmDataGetStatusOrFailureResponse(
         @JsonProperty("failure") RuntimeException failure,
         @JsonProperty("status") Rpc.EmDataGetStatusResponse status
@@ -1619,7 +1634,7 @@ public class ShellyPro3EM extends Shelly {
   public record WsGetConfig(
         @JsonProperty("replyTo") ActorRef<Rpc.WsGetConfigResponse> replyTo
   ) implements Command {}
-  
+
   public record WsSetConfig(
         @JsonProperty("config") Rpc.WsSetConfigParams config,
         @JsonProperty("replyTo") ActorRef<Rpc.WsSetConfigResponse> replyTo
@@ -1628,7 +1643,7 @@ public class ShellyPro3EM extends Shelly {
   public record ResetData(
         @NotNull ActorRef<Done> replyTo
   ) implements Command {}
-  
+
   public record OutboundWebsocketConnectionFailed(
         @NotNull String url,
         @NotNull Throwable failure
@@ -1639,11 +1654,11 @@ public class ShellyPro3EM extends Shelly {
         @NotNull InetAddress remoteAddress,
         @NotNull String connectionId
   ) implements Command {}
-  
+
   public enum RetryOpenOutboundWebsocketConnection implements Command {
     INSTANCE
   }
-  
+
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public record ShellyConfig(
         @JsonProperty("ble") Rpc.BleGetConfigResponse ble,
@@ -1653,7 +1668,12 @@ public class ShellyPro3EM extends Shelly {
         @JsonProperty("wifi_sta") Rpc.WiFiStatus wifi_sta,
         @JsonProperty("ws") Rpc.WsGetConfigResponse ws
   ) implements Rpc.Response {}
-  
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record ShellyMethods(
+      @JsonProperty("methods") List<String> methods
+  ) implements Rpc.Response {}
+
   public enum RetryStartUdpServer implements Command {
     INSTANCE
   }
@@ -1665,7 +1685,7 @@ public class ShellyPro3EM extends Shelly {
     private final Rpc.ModbusStatus modbus;
     private final double total_power;
     private final boolean fs_mounted;
-    
+
     public Status(@NotNull Rpc.WiFiStatus wifi_sta,
                   @NotNull Rpc.CloudStatus cloud,
                   @NotNull Rpc.MqttStatus mqtt,
@@ -1688,7 +1708,7 @@ public class ShellyPro3EM extends Shelly {
                   @NotNull Rpc.ModbusStatus modbus,
                   double total_power,
                   boolean fs_mounted) {
-      super(wifi_sta, cloud, mqtt, time, unixtime, serial, has_update, mac, ram_total, ram_free, ram_lwm, fs_size, 
+      super(wifi_sta, cloud, mqtt, time, unixtime, serial, has_update, mac, ram_total, ram_free, ram_lwm, fs_size,
             fs_free, uptime, temperature, overtemperature, temp);
       this.em0 = em0;
       this.emdata0 = emdata0;
